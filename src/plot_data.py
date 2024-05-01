@@ -13,7 +13,7 @@ epochs_scalings = { 'eeg': 50e-6 }
 
 def plot_data(type, subject=None, session=None):
 
-    ########## Plot Original vs Filtered Data
+    ########## Plot Original vs Filtered EEG Data
     if type == "original_vs_filtered":
         original_sample = f"data/originalRaw/Data_S{subject}_Sess{session}_raw.fif"
         filtered_sample = f"data/preprocessed/bandpassFiltered/Data_S{subject}_Sess{session}_raw.fif"
@@ -37,7 +37,7 @@ def plot_data(type, subject=None, session=None):
         else:
             print(f"Missing filtered file for Subject {subject} Session {session}")
 
-    ########## Plot Filtered vs Cleaned Data
+    ########## Plot Filtered vs Cleaned EEG Data
     if type == "filtered_vs_cleaned":
         filtered_sample = f"data/preprocessed/bandpassFiltered/Data_S{subject}_Sess{session}_raw.fif"
         cleaned_sample = f"data/preprocessed/artifactRemoved/Data_S{subject}_Sess{session}_cleaned_raw.fif"
@@ -60,7 +60,7 @@ def plot_data(type, subject=None, session=None):
         else:
             print(f"Missing filtered file for Subject {subject} Session {session}")
 
-
+    ########## Plots a sample epochs object (of a specified subject & session) as butterfly map with topomap at peak points
     if type == "epochs":
         epochs_sample = f"data/epochs/Data_S{subject}_Sess{session}_epochs_epo.fif"
 
@@ -80,6 +80,7 @@ def plot_data(type, subject=None, session=None):
         else:
             print(f"Missing epoched file for Subject {subject} Session {session}")
 
+    ########## Plots a sample evoked object (of a specified subject & session) as butterfly map with topomap at peak points
     if type == "evoked":
         evoked_sample = f"data/evoked/Data_S{subject}_Sess{session}_evoked-ave.fif"
 
@@ -98,6 +99,7 @@ def plot_data(type, subject=None, session=None):
         else:
             print(f"Missing correct evoked file for Subject {subject} Session {session}")
 
+    ########## Plots the Grand Average of Correct vs Incorrect response waves and Difference waves
     if type == "grand_average":
         grand_average_path = "data/grandAverage/grand_averages-ave.fif"
 
@@ -111,49 +113,136 @@ def plot_data(type, subject=None, session=None):
         # Compute differences of correct vs incorrect
         difference_evoked = mne.combine_evoked([correct_evoked, incorrect_evoked], [1, -1])
 
-
         # Plot grand averages
         correct_evoked.plot(show=False, titles="Correct Response ERP")
         incorrect_evoked.plot(show=False, titles="Incorrect Response ERP")
         difference_evoked.plot(show=False, titles="Difference Waves")
 
+    ########## Get peak channel, time and amplitude and plot topomap at peaks for Correct and Incorrect responses
+    #============================== Should plot difference peaks? 
     if type == "peaks":
-        
+        grand_average_path = "data/grandAverage/grand_averages-ave.fif"
+
+        # Load specific evoked object by comment
+        correct_evoked = mne.read_evokeds(grand_average_path, condition='correct')
+        incorrect_evoked = mne.read_evokeds(grand_average_path, condition='incorrect')
+        difference_evoked = mne.combine_evoked([correct_evoked, incorrect_evoked], [1, -1])
+
         # Find Peaks
-        # time_window = (0.25, 0.5)  # 250 to 500 milliseconds
-        # ch_name = 'Pz'  # Commonly used channel for P300
-        # correct_peak_time, correct_peak_amplitude = correct_evoked.get_peak(ch_type='eeg', tmin=time_window[0], tmax=time_window[1], mode='pos', return_amplitude=True)
-        # print(f"Correct P300 Peak at {correct_peak_time*1000} ms with amplitude {correct_peak_amplitude} µV")
-        # incorrect_peak_time, incorrect_peak_amplitude = incorrect_evoked.get_peak(ch_type='eeg', tmin=time_window[0], tmax=time_window[1], mode='pos', return_amplitude=True)
+        time_window = (0.25, 0.6)  # 250 to 600 milliseconds
+        correct_peak_result = correct_evoked.get_peak(ch_type='eeg', tmin=time_window[0], tmax=time_window[1], mode='pos', return_amplitude=True)
+        print("-------------- Peak for Correct Feedback ---------------")
+        correct_peak_channel = correct_peak_result[0]
+        correct_peak_time = correct_peak_result[1]  # Convert to milliseconds
+        correct_peak_amplitude = correct_peak_result[2]  # Convert to microvolts
+        print(f"Correct P300 Peak Channel at {correct_peak_channel}")
+        print(f"Correct P300 Peak at {correct_peak_time*1e3} ms with amplitude {correct_peak_amplitude*1e6} µV")
+        
+        incorrect_peak_result = incorrect_evoked.get_peak(ch_type='eeg', tmin=time_window[0], tmax=time_window[1], mode='pos', return_amplitude=True)
+        print("-------------- Peak for Incorrect Feedback ---------------")
+        incorrect_peak_channel = incorrect_peak_result[0]
+        incorrect_peak_time = incorrect_peak_result[1]
+        incorrect_peak_amplitude = incorrect_peak_result[2]
+        print(f"Correct P300 Peak Channel at {incorrect_peak_channel}")
+        print(f"Correct P300 Peak at {incorrect_peak_time*1e3} ms with amplitude {incorrect_peak_amplitude*1e6} µV")
+        
+        diff_peak_result = difference_evoked.get_peak(ch_type='eeg', tmin=time_window[0], tmax=time_window[1], mode='pos', return_amplitude=True)
+        print("-------------- Peak for Incorrect Feedback ---------------")
+        diff_peak_channel = diff_peak_result[0]
+        diff_peak_time = diff_peak_result[1]
+        diff_peak_amplitude = diff_peak_result[2]
+        print(f"Correct P300 Peak Channel at {diff_peak_channel}")
+        print(f"Correct P300 Peak at {diff_peak_time*1e3} ms with amplitude {diff_peak_amplitude*1e6} µV")
+
         # print(f"Incorrect P300 Peak at {incorrect_peak_time*1000} ms with amplitude {incorrect_peak_amplitude} µV")
 
-        # # Plot Topomaps
-        # correct_evoked.plot_topomap(times=correct_peak_time, ch_type='eeg', show=False)
-        # incorrect_evoked.plot_topomap(times=incorrect_peak_time, ch_type='eeg', show=False)
+        # Plot Topomaps
+        correct_topo_fig = correct_evoked.plot_topomap(times=correct_peak_time, ch_type='eeg', show_names=True, show=False)
+        correct_topo_fig.suptitle("Peak Amplitude Topography Map for Correct Responses")
+        incorrect_topo_fig = incorrect_evoked.plot_topomap(times=incorrect_peak_time, ch_type='eeg', show_names=True, show=False)
+        incorrect_topo_fig.suptitle("Peak Amplitude Topography Map for Incorrect Responses")
+        diff_topo_fig = difference_evoked.plot_topomap(times=diff_peak_time, ch_type='eeg', show_names=True, show=False)
+        diff_topo_fig.suptitle("Peak Amplitude Topography Map for Correct vs Incorrect Responses")
 
-        # Create data arrays: correct_evoked_data and incorrect_evoked_data are numpy arrays from evoked.get_data() for correct and incorrect conditions
-        # Extract data as numpy arrays from the Evoked objects
-        # evoked_data_correct = correct_evoked.get_data()
-        # evoked_data_incorrect = incorrect_evoked.get_data()
+        # Plot Animated Topomap
+        times = np.arange(0.25, 0.6, 0.01)
+        fig, anim = difference_evoked.animate_topomap(ch_type="eeg", times=times, frame_rate=2, butterfly=True, blit=False, time_unit="ms")
+        # Save Animation
+        anim.save('diff_peak_animation.mp4', writer='ffmpeg', fps=10)
 
-        # all_evoked_correct and all_evoked_incorrect are lists of Evoked objects
-        # data_correct = [e.get_data() for e in correct_evoked]  # List of arrays
-        # data_incorrect = [e.get_data() for e in incorrect_evoked]  # List of arrays
+    ########## Conduct Permutation Cluster Test for Correct and Incorrect Responses
+    if type == "cluster_permutation":
 
-        # Stack arrays to create a 3D array (n_epochs, n_channels, n_times)
-        # data_correct = np.stack(data_correct)
-        # data_incorrect = np.stack(data_incorrect)
+        #-- Get data for each condition over each epoch (each observation)
+        epochs_dir = "data/epochs"
+        
+        data_correct = []
+        data_incorrect = []
+        for subject_id in range(1, 27):    # Loop through subjects
+            for session_id in range(1, 6):    # Loop through sessions
+                # Define path and read epochs data for this session
+                file_path = f'{epochs_dir}/Data_S{subject_id:02d}_Sess{session_id:02d}_epochs_epo.fif'
+                epochs = mne.read_epochs(file_path, preload=True)
+
+                # Append data for each event type to the aggregate list
+                data_correct.append(epochs['correct'].get_data(copy=True))
+                data_incorrect.append(epochs['incorrect'].get_data(copy=True))
+
+        # Convert lists of arrays into a single array for each condition
+        data_correct = np.concatenate(data_correct, axis=0)  # Shape (n_correct_epochs, n_channels, n_timepoints)
+        data_incorrect = np.concatenate(data_incorrect, axis=0)  # Shape (n_incorrect_epochs, n_channels, n_timepoints)
+
+        print("-------------------- Data Correct --------------------")
+        print(data_correct)
+        print(data_correct.shape)
+        print("-------------------- Data Incorrect --------------------")
+        print(data_incorrect)
+        print(data_incorrect.shape)
 
         # Conduct the permutation cluster test
-        # T_obs, clusters, cluster_p_values, H0 = permutation_cluster_test(np.array([data_correct, data_incorrect]), n_permutations=1000, threshold=None, tail=0)
+        X = [data_correct, data_incorrect]
+        T_obs, clusters, cluster_p_values, H0 = permutation_cluster_test(X, threshold=0.05, n_permutations=1000, tail=1)
         # Observed Statistic
-        # print(T_obs)
+        print("------------------ T_obs --------------------")
+        print(T_obs)
         # Cluster Information
-        # print(clusters)
+        print("------------------ Clusters --------------------")
+        print(clusters)
         # p-values for each cluster
-        # print(cluster_p_values)
+        print("------------------ cluster_p_values --------------------")
+        print(cluster_p_values)
         # Permutation distribution of the max statistic
-        # print(H0)
+        print("------------------ H0 --------------------")
+        print(H0)
+
+
+        # Get info and start time from any existing Evoked object
+        sample_epoch_path = f"{epochs_dir}/Data_S01_Sess01_epochs_epo.fif"
+        sample_epoch = mne.read_epochs(sample_epoch_path, preload=True)
+        info = sample_epoch[0].info
+        tmin = sample_epoch[0].times[0]
+
+        print("-------------------- Info --------------------")
+        print(info)
+
+        # Create an Evoked object containing the T-values from the permutation test 
+        t_evoked = mne.EvokedArray(T_obs, info, tmin=tmin)
+
+        # Create a mask for significant clusters at p < 0.05
+        p_threshold = 0.05
+        significant_points = np.zeros_like(T_obs, dtype=bool)
+        for c, p_val in zip(clusters, cluster_p_values):
+            if p_val <= p_threshold:
+                significant_points[c] = True
+
+        # Now plot the T-values with masking for non-significant points
+        t_evoked.plot_image(exclude=['EOG'], titles='Significant T-values Between Correct vs Incorrect Responses', mask=significant_points, mask_style='green', time_unit='s', show_names=True)
+
+        # Create Topomap animation showing differences in statistical significance
+        times = np.arange(t_evoked.times[0], t_evoked.times[-1], t_evoked.times[1] - t_evoked.times[0])
+        fig, anim = t_evoked.animate_topomap(ch_type="eeg", times=times, frame_rate=2, butterfly=True, blit=False, time_unit="ms")
+        # Save Animation
+        anim.save('tval_topo_animation.mp4', writer='ffmpeg', fps=10)
 
     # Use plt.show() to dislay all plots at once
     plt.show()

@@ -5,7 +5,12 @@ from src.preprocessing import remove_artifact
 from src.get_erp import create_epochs
 from src.get_erp import average_epochs
 from src.get_erp import create_grand_average
+from src.stats_test import compute_cluster_permutation
 
+###########################################################################################
+# Note: Please make sure you have the original csv's under data/allData 
+#       Once you make sure you have the original data, please run each step sequentially.
+###########################################################################################
 def main():
     ##### -------------- Load Data --------------
 
@@ -31,7 +36,7 @@ def main():
     
 
     ##### -------------- Epoch Cleaned Data --------------
-    # sfreq=200
+    sfreq=200
     # create_epochs(sfreq=sfreq)
 
     #-- Plot Epochs
@@ -50,10 +55,21 @@ def main():
     
     
     ##### -------------- Compute Grand Average --------------
-    # create_grand_average()
+    # create_grand_average()  #-- Also saves the evoked objects for each subject in raw file 
     
-    #-- Plot Grand Average (ERP)
-    plot_data("grand_average")
+    #-- Plot Grand Average as ERP waveform
+    # plot_data("grand_average")
+
+    ##### -------------- Compute Stats --------------
+
+    #-- Get Peaks and plot topomaps of amplitude at peaks
+    # plot_data("peaks")
+
+    #-- Conduct Permutation Cluster Test and Plot Cluster Map and Create Topomap movie of significant timepoints
+    plot_data("cluster_permutation")
+
+    #-- Create Topomap movie at statistically important times
+
 
     print("main function called")
 

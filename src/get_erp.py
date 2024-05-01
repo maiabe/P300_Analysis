@@ -96,7 +96,7 @@ def create_epochs(sfreq):
 
                     # Save epoched data
                     epoch_file_path = f"{epoch_dir}/Data_S{i:02d}_Sess{j:02d}_epochs_epo.fif"
-                    epochs_auto_rejected.save(epoch_file_path, overwrite=True)
+                    epochs_auto_rejected.save(epoch_file_path, fmt="double", overwrite=True)
                     print(f"=====================================> Saved epoch data to {epoch_file_path}")
 
 
@@ -165,6 +165,8 @@ def create_epochs(sfreq):
 #             else:
 #                 print(f"Missing Epoch file for Subject {i}, Session {j}.")
 
+
+# Averages epochs by sessions per subject
 def average_epochs(subject_id, session_id, event_type):
     print("average_epochs called")
     
@@ -182,9 +184,16 @@ def average_epochs(subject_id, session_id, event_type):
         print(f"epochs read is empty")
     else:
         evoked = epochs[event_type].average()
+        print("===============================================================")
+        print("===============================================================")
+        print(evoked.info)
+        print(evoked.get_data())
+        print(evoked.get_data().shape)
+
         return evoked
     
     return None
+
 
 
 def create_grand_average():
@@ -200,27 +209,50 @@ def create_grand_average():
 
     # Loop over subjects and sessions
     for subject_id in range(1, 27):  # Iterate through 26 subjects
+        correct_subject_evokeds = []
+        incorrect_subject_evokeds = []
         for session_id in range(1, 6):  # Iterate through 5 sessions per subject
             try:
                 evoked_correct = average_epochs(subject_id, session_id, 'correct')
+                correct_subject_evokeds.append(evoked_correct)
                 evoked_incorrect = average_epochs(subject_id, session_id, 'incorrect')
+                incorrect_subject_evokeds.append(evoked_incorrect)
+
                 if(evoked_correct):
                     print(evoked_correct.info)
                     all_evoked_correct.append(evoked_correct)
                 if(evoked_incorrect):
                     print(evoked_incorrect.info)
                     all_evoked_incorrect.append(evoked_incorrect)
+
             except FileNotFoundError:
                 print(f"Data not found for Subject {subject_id} Session {session_id}")
 
+        # Save averages by subjects
+        subject_average_path = f"data/evoked/bySubject/Data_S{subject_id:02d}_evokeds-ave.fif"
+        correct_subject_evokeds = [item for item in correct_subject_evokeds if item is not None]
+        correct_subject_average = mne.grand_average(correct_subject_evokeds)
+        correct_subject_average.comment = 'correct'
 
-    # Compute grand averages
+        incorrect_subject_evokeds = [item for item in incorrect_subject_evokeds if item is not None]
+        incorrect_subject_average = mne.grand_average(incorrect_subject_evokeds)
+        incorrect_subject_average.comment = 'incorrect'
+        mne.write_evokeds(subject_average_path, evoked=[correct_subject_average, incorrect_subject_average], overwrite=True)
+
+    # Compute grand averages across all epochs
     grand_average_correct = mne.grand_average(all_evoked_correct)
     grand_average_correct.comment = 'correct'
     grand_average_incorrect = mne.grand_average(all_evoked_incorrect)
     grand_average_incorrect.comment = 'incorrect'
 
-    
+    print("---------------- Grand Average Correct ----------------")
+    print(grand_average_correct.info)
+    print(grand_average_correct.get_data().shape)
+    print("---------------- Grand Average Incorrect ----------------")
+    print(grand_average_correct.info)
+    print(grand_average_correct.get_data())
+    print(grand_average_correct.get_data().shape)
+
     # Save grand averages
     grand_average_path = f"{grand_average_dir}/grand_averages-ave.fif"
     mne.write_evokeds(grand_average_path, evoked=[grand_average_correct, grand_average_incorrect], overwrite=True)
